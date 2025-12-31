@@ -37,16 +37,26 @@
   // ---------------- Player Setup ----------------
   let playerId = localStorage.getItem("playerId");
   if (!playerId) {
-    // Assign random name automatically
     playerId = "Player_" + Math.floor(Math.random() * 1000);
     localStorage.setItem("playerId", playerId);
   }
 
-  const playerMarkers = {}; // Store markers for all players
+  const playerMarkers = {};
 
   // ---------------- Map Setup ----------------
   const map = L.map('map').setView([6.033, 80.216], 16);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+  // Satellite base layer
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+      maxZoom: 19
+  }).addTo(map);
+
+  // Road/landmark overlay
+  const labels = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      opacity: 0.5
+  }).addTo(map);
 
   // ---------------- Track Location ----------------
   if (navigator.geolocation) {
@@ -54,17 +64,17 @@
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
 
-      // Write your location to Firebase
+      // Write location to Firebase
       set(ref(database, `players/${playerId}`), {
         lat,
         lon,
         lastUpdate: Date.now()
       });
 
-      // Remove yourself on disconnect
+      // Remove on disconnect
       onDisconnect(ref(database, `players/${playerId}`)).remove();
 
-      // Update your marker immediately
+      // Add/update marker
       if (!playerMarkers[playerId]) {
         playerMarkers[playerId] = L.marker([lat, lon])
           .addTo(map)
@@ -73,7 +83,7 @@
         playerMarkers[playerId].setLatLng([lat, lon]);
       }
 
-      // Optionally center map on yourself
+      // Optional: center map on yourself
       map.setView([lat, lon], 16);
 
     }, err => alert("Location error: " + err.message), { enableHighAccuracy: true });
@@ -97,7 +107,7 @@
       }
     }
 
-    // Remove markers for disconnected players
+    // Remove disconnected markers
     for (const id in playerMarkers) {
       if (!players[id]) {
         map.removeLayer(playerMarkers[id]);
