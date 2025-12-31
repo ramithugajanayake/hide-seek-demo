@@ -3,8 +3,13 @@
 <head>
   <title>Hide & Seek Demo</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Editable plugin for resizable circles -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-editable@1.2.0/dist/leaflet-editable.css" />
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-editable@1.2.0/dist/Leaflet.Editable.js"></script>
+
   <!-- Load Bropella Font -->
   <link href="https://fonts.googleapis.com/css2?family=Bropella:wght@400;700&display=swap" rel="stylesheet">
+
   <style>
     body { margin: 0; padding: 0; }
     #header {
@@ -28,6 +33,7 @@
       border-radius: 0 0 16px 16px;
     }
     #map { height: calc(100vh - 60px); width: 100%; margin-top: 60px; }
+
     #controls {
       position: fixed;
       bottom: 20px;
@@ -40,8 +46,11 @@
       z-index: 1001;
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
-    #controls input { padding: 5px; font-size: 14px; }
-    #controls button { padding: 5px 10px; margin-left: 5px; }
+    #controls input, #controls select, #controls button {
+      padding: 5px;
+      font-size: 14px;
+      margin: 2px;
+    }
   </style>
 </head>
 <body>
@@ -56,13 +65,17 @@
     <option value="hider">Hider</option>
     <option value="seeker">Seeker</option>
   </select>
+  <input type="number" id="zoneRadius" placeholder="Safe Zone Radius (m)">
+  <button id="updateZoneBtn">Update Zone</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
   import { getDatabase, ref, set, onValue, onDisconnect, update } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
 
+  // ---------------- Firebase ----------------
   const firebaseConfig = {
     apiKey: "AIzaSyD259A37SrWNP8jaRP7h3NLKQMIAsr5jC4",
     authDomain: "hide-seek-demo-f6c65.firebaseapp.com",
@@ -80,15 +93,16 @@
   let playerId = localStorage.getItem("playerId");
   let playerName = localStorage.getItem("playerName") || "Player_" + Math.floor(Math.random()*1000);
   let playerRole = localStorage.getItem("playerRole") || "hider";
-
   localStorage.setItem("playerName", playerName);
   localStorage.setItem("playerRole", playerRole);
   if (!playerId) { playerId = "player_" + Date.now(); localStorage.setItem("playerId", playerId); }
 
-  // UI elements
   const nameInput = document.getElementById("nameInput");
   const changeNameBtn = document.getElementById("changeNameBtn");
   const roleSelect = document.getElementById("roleSelect");
+  const zoneRadiusInput = document.getElementById("zoneRadius");
+  const updateZoneBtn = document.getElementById("updateZoneBtn");
+
   nameInput.value = playerName;
   roleSelect.value = playerRole;
 
@@ -101,7 +115,7 @@
   }
 
   // ---------------- Map Setup ----------------
-  const map = L.map('map').setView([6.033, 80.216], 16);
+  const map = L.map('map', { editable: true }).setView([6.033, 80.216], 16);
   const satellite = L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     { attribution: 'Tiles © Esri', maxZoom: 19 }
@@ -110,30 +124,31 @@
   const playerMarkers = {};
 
   // ---------------- Safe Zone ----------------
-  let safeZone = L.circle([6.033, 80.216], { radius: 50, color: 'blue', fillOpacity: 0.2, draggable: true }).addTo(map);
-  safeZone.dragging = safeZone.dragging || L.Draggable ? new L.Draggable(safeZone._path) : null;
+  let safeZone = L.circle([6.033, 80.216], { radius: 50, color: 'blue', fillOpacity: 0.2 }).addTo(map);
+  safeZone.enableEdit();
 
-  // Save safe zone to Firebase
   const saveSafeZone = () => {
     const center = safeZone.getLatLng();
     const radius = safeZone.getRadius();
     set(ref(database, "safeZone"), { lat: center.lat, lon: center.lng, radius });
   }
-  saveSafeZone();
-  safeZone.on('move', saveSafeZone);
+  safeZone.on('editable:dragend', saveSafeZone);
+  safeZone.on('editable:radius', saveSafeZone);
 
-  // ---------------- Track Location ----------------
+  // Update radius manually from input
+  updateZoneBtn.onclick = () => {
+    const r = Number(zoneRadiusInput.value);
+    if (r > 0) { safeZone.setRadius(r); saveSafeZone(); }
+  }
+
+  // ---------------- Track Player Location ----------------
   if (navigator.geolocation) {
     navigator.geolocation.watchPosition(pos => {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
 
       set(ref(database, `players/${playerId}`), {
-        lat,
-        lon,
-        name: playerName,
-        role: playerRole,
-        lastUpdate: Date.now()
+        lat, lon, name: playerName, role: playerRole, lastUpdate: Date.now()
       });
       onDisconnect(ref(database, `players/${playerId}`)).remove();
 
@@ -150,7 +165,7 @@
     }, err => alert("Location error: " + err.message), { enableHighAccuracy: true });
   }
 
-  // ---------------- Listen to all players ----------------
+  // ---------------- Listen to All Players ----------------
   onValue(ref(database, "players"), snapshot => {
     const players = snapshot.val() || {};
     for (const id in players) {
@@ -164,7 +179,6 @@
         playerMarkers[id].setTooltipContent(name);
       }
     }
-
     for (const id in playerMarkers) {
       if (!players[id]) {
         map.removeLayer(playerMarkers[id]);
@@ -173,7 +187,7 @@
     }
   });
 
-  // ---------------- Check Safe Zone ----------------
+  // ---------------- Sync Safe Zone ----------------
   setInterval(() => {
     onValue(ref(database, "safeZone"), snapshot => {
       const zone = snapshot.val();
@@ -182,7 +196,7 @@
       safeZone.setRadius(zone.radius);
     });
 
-    // Optional: highlight players outside safe zone for seekers
+    // Highlight hiders outside the zone
     onValue(ref(database, "players"), snapshot => {
       const players = snapshot.val() || {};
       const center = safeZone.getLatLng();
@@ -191,15 +205,15 @@
         if (!playerMarkers[id]) continue;
         const p = players[id];
         const dist = map.distance([p.lat, p.lon], center);
-        if (dist > radius && p.role === "hider") {
-          playerMarkers[id].setOpacity(0.5); // semi-transparent if outside
+        if (dist > radius && players[id].role === "hider") {
+          playerMarkers[id].setOpacity(0.5);
         } else {
           playerMarkers[id].setOpacity(1);
         }
       }
     });
 
-  }, 2000); // check every 2 seconds
+  }, 2000);
 </script>
 
 </body>
