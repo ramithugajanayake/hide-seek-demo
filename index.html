@@ -17,6 +17,25 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyC_nAuvVwNy2feFGqYNLF5hxR9fuyKGQ4Q",
+    authDomain: "hide-seek-demo.firebaseapp.com",
+    projectId: "hide-seek-demo",
+    storageBucket: "hide-seek-demo.firebasestorage.app",
+    messagingSenderId: "206729002580",
+    appId: "1:206729002580:web:8acdb76c33db7771b8b7c1"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+</script>
     // Initialize map
     const map = L.map('map').setView([6.033, 80.216], 15); // Default: Galle area
 
