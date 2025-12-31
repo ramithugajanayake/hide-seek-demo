@@ -2,9 +2,54 @@
 <html>
 <head>
   <title>Hide & Seek Demo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+    body { margin: 0; padding: 0; }
+  </style>
 </head>
 <body>
-  <h1>Hide & Seek Demo</h1>
-  <p>If you can see this, GitHub Pages works.</p>
+  <h2 style="text-align:center;">Hide & Seek Demo Map</h2>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Initialize map
+    const map = L.map('map').setView([6.033, 80.216], 15); // Default: Galle area
+
+    // OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    // Add marker for your location
+    let marker;
+
+    function updateLocation(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      if (!marker) {
+        marker = L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
+      } else {
+        marker.setLatLng([lat, lon]);
+      }
+
+      map.setView([lat, lon], 18);
+    }
+
+    function locationError(err) {
+      alert("Error getting location: " + err.message);
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(updateLocation, locationError, { enableHighAccuracy: true });
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  </script>
 </body>
 </html>
