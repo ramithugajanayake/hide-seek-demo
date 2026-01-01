@@ -84,15 +84,6 @@
       margin-top:4px;
       margin-bottom:10px;
     }
-
-    .name-label {
-      font-weight:bold;
-      background: rgba(255,255,255,0.8);
-      padding: 2px 4px;
-      border-radius: 4px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
   </style>
 </head>
 
@@ -109,11 +100,11 @@
   <div id="colorPicker">
     <button style="background:red;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('red')"></button>
     <button style="background:orange;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('orange')"></button>
-    <button style="background:yellow;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('yellow')"></button>
-    <button style="background:green;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('green')"></button>
-    <button style="background:blue;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('blue')"></button>
-    <button style="background:indigo;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('indigo')"></button>
-    <button style="background:violet;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('violet')"></button>
+    <button style="background:yellow;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('yellow')"></button>
+    <button style="background:green;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('green')"></button>
+    <button style="background:blue;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('blue')"></button>
+    <button style="background:indigo;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('indigo')"></button>
+    <button style="background:violet;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('violet')"></button>
   </div>
 </div>
 
@@ -214,7 +205,7 @@ navigator.geolocation.watchPosition(pos => {
   });
 });
 
-/* Render players with labels and popups */
+/* Render players with popups only */
 onValue(ref(db,"players"), snap => {
   const players = snap.val() || {};
   for (const id in players) {
@@ -224,20 +215,10 @@ onValue(ref(db,"players"), snap => {
     if (!markers[id]) {
       markers[id] = L.marker([p.lat,p.lon],{icon}).addTo(map);
 
-      // Clickable popup
+      // Clickable popup only
       markers[id].bindPopup(`<b>${p.name}</b><br>${p.role}<br>Last: ${new Date(p.last).toLocaleTimeString()}`);
-
-      // Small always-visible label
-      const label = L.divIcon({
-        className:'name-label',
-        html:p.name,
-        iconAnchor:[-10,-10]
-      });
-      markers[id+"_label"] = L.marker([p.lat,p.lon],{icon:label, interactive:false}).addTo(map);
-
     } else {
       markers[id].setLatLng([p.lat,p.lon]);
-      markers[id+"_label"].setLatLng([p.lat,p.lon]);
       markers[id].getPopup().setContent(`<b>${p.name}</b><br>${p.role}<br>Last: ${new Date(p.last).toLocaleTimeString()}`);
     }
   }
