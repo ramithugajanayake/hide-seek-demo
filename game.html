@@ -1,58 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hide & Seek - Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Hide & Seek - Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <style>
-    body, html { height: 100%; margin: 0; font-family: 'Poppins', sans-serif; }
-    #map { height: 100%; width: 100%; }
+<style>
+  body, html { height: 100%; margin: 0; font-family: 'Poppins', sans-serif; }
+  #map { height: 100%; width: 100%; }
 
-    /* Pulsing marker CSS */
-    .pulse {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #ff3b3b;
-      position: relative;
-      box-shadow: 0 0 0 rgba(255,59,59,0.7);
-      animation: pulse 1.5s infinite;
-    }
+  /* Pulsing marker CSS */
+  .pulse {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ff3b3b;
+    position: relative;
+    box-shadow: 0 0 0 rgba(255,59,59,0.7);
+    animation: pulse 1.5s infinite;
+  }
 
-    @keyframes pulse {
-      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,59,59,0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(255,59,59,0); }
-      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,59,59,0); }
-    }
+  @keyframes pulse {
+    0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,59,59,0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(255,59,59,0); }
+    100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,59,59,0); }
+  }
 
-    /* Header to show player name */
-    #header {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(255,255,255,0.3);
-      padding: 10px 20px;
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      z-index: 1000;
-      font-weight: 600;
-    }
+  /* Header */
+  #header {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.3);
+    padding: 10px 20px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    font-weight: 600;
+  }
 
-    #header input {
-      padding: 5px 10px;
-      border-radius: 12px;
-      border: none;
-      font-weight: 600;
-    }
-  </style>
+  #header input {
+    padding: 5px 10px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+  }
+</style>
 </head>
 <body>
 
@@ -70,7 +70,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
   import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
 
-  // ====== Firebase Config (correct regional URL!) ======
+  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyD259A37SrWNP8jaRP7h3NLKQMIAsr5jC4",
     authDomain: "hide-seek-demo-f6c65.firebaseapp.com",
@@ -84,7 +84,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  // ====== Player ID & Name ======
+  // Player ID & Name
   let playerId = localStorage.getItem("playerId");
   if (!playerId) {
     playerId = 'player-' + Math.floor(Math.random() * 100000);
@@ -94,7 +94,6 @@
   const nameInput = document.getElementById("playerName");
   let playerName = localStorage.getItem("playerName") || '';
 
-  // Prompt for name if empty
   if (!playerName) {
     playerName = prompt("Enter your player name:") || playerId;
     localStorage.setItem("playerName", playerName);
@@ -103,19 +102,24 @@
     nameInput.value = playerName;
   }
 
-  // ====== Map Setup (Google Satellite + Terrain + Labels) ======
+  // Map setup
   const map = L.map('map').setView([6.033, 80.216], 18);
 
-  const googleSatLayer = L.tileLayer(
-    'https://{s}.google.com/vt/lyrs=y,h&x={x}&y={y}&z={z}', {
-      maxZoom: 20,
-      subdomains:['mt0','mt1','mt2','mt3'],
-      attribution: 'Map data © Google'
-  }).addTo(map);
+  // Esri Satellite layer
+  const satelliteLayer = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 
+    { attribution: 'Tiles &copy; Esri', maxZoom: 20 }
+  ).addTo(map);
+
+  // Stamen Labels overlay
+  const labelsLayer = L.tileLayer(
+    'https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}.png',
+    { attribution: 'Map labels &copy; Stamen Design', maxZoom: 20 }
+  ).addTo(map);
 
   const playerMarkers = {};
 
-  // ====== Update Player Location ======
+  // Update Player Location
   function updatePlayerLocation() {
     if (!navigator.geolocation) {
       alert("Geolocation not supported by your browser");
@@ -138,20 +142,18 @@
     onDisconnect(ref(db, `players/${playerId}`)).remove();
   }
 
-  // Start location updates
   updatePlayerLocation();
 
-  // ====== Listen for name changes ======
+  // Name input listener
   nameInput.addEventListener("change", () => {
     playerName = nameInput.value.trim() || playerId;
     localStorage.setItem("playerName", playerName);
     updatePlayerLocation();
   });
 
-  // ====== Show All Players ======
+  // Listen for all players
   onValue(ref(db, "players"), snapshot => {
     const players = snapshot.val() || {};
-
     for (const id in players) {
       const { lat, lon, name } = players[id];
 
@@ -176,7 +178,7 @@
       }
     }
   });
-</script>
 
+</script>
 </body>
 </html>
