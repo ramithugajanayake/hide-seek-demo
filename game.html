@@ -24,6 +24,19 @@
       padding:10px 16px;
       border-radius:20px;
       z-index:1000;
+      font-weight:700;
+    }
+
+    .settings {
+      position:absolute;
+      top:12px;
+      right:12px;
+      cursor:pointer;
+      background:rgba(255,255,255,0.35);
+      backdrop-filter:blur(18px);
+      padding:8px 12px;
+      border-radius:16px;
+      z-index:1000;
       font-weight:600;
     }
 
@@ -39,12 +52,38 @@
       z-index:1000;
       display:none;
     }
+
+    #settingsModal {
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.4);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:2000;
+    }
+
+    #settingsModal > div {
+      background:rgba(255,255,255,0.4);
+      backdrop-filter:blur(20px);
+      padding:20px;
+      border-radius:20px;
+      min-width:260px;
+    }
+
+    input, select, button {
+      width:100%;
+      padding:6px;
+      margin-top:4px;
+      margin-bottom:10px;
+    }
   </style>
 </head>
 
 <body>
 
 <div class="glass" id="topBar"></div>
+<div class="settings" onclick="openSettings()">⚙️</div>
 
 <div id="radiusBox">
   <b>Seeker Radius</b><br>
@@ -53,6 +92,25 @@
 </div>
 
 <div id="map"></div>
+
+<!-- Settings Modal -->
+<div id="settingsModal">
+  <div>
+    <h3>Player Settings</h3>
+
+    <label>Name</label>
+    <input id="nameInput">
+
+    <label>Role</label>
+    <select id="roleInput">
+      <option value="seeker">Seeker</option>
+      <option value="hider">Hider</option>
+    </select>
+
+    <button onclick="saveSettings()">Save</button>
+    <button onclick="closeSettings()">Cancel</button>
+  </div>
+</div>
 
 <script type="module">
 /* Firebase */
@@ -76,44 +134,57 @@ const db = getDatabase(app);
 let playerId = localStorage.getItem("playerId") || crypto.randomUUID();
 localStorage.setItem("playerId", playerId);
 
-let name = localStorage.getItem("playerName");
-let role = localStorage.getItem("playerRole");
+let name = localStorage.getItem("playerName") || "Player";
+let role = localStorage.getItem("playerRole") || "hider";
 
-if (!name || !role) {
-  name = prompt("Enter your name");
-  role = prompt("Type: seeker or hider").toLowerCase();
+const topBar = document.getElementById("topBar");
+topBar.textContent = `${name} — ${role.toUpperCase()}`;
+
+/* Settings handlers */
+window.openSettings = () => {
+  nameInput.value = name;
+  roleInput.value = role;
+  settingsModal.style.display = "flex";
+};
+
+window.closeSettings = () => {
+  settingsModal.style.display = "none";
+};
+
+window.saveSettings = () => {
+  name = nameInput.value.trim() || "Player";
+  role = roleInput.value;
+
   localStorage.setItem("playerName", name);
   localStorage.setItem("playerRole", role);
-}
 
-/* UI */
-document.getElementById("topBar").textContent =
-  `${name} — ${role.toUpperCase()}`;
+  location.reload();
+};
 
 /* Map */
 const map = L.map("map", { editable:true }).setView([6.033,80.216], 18);
 
 L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 20 }
+  { maxZoom:20 }
 ).addTo(map);
 
 L.tileLayer(
   "https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}.png",
-  { maxZoom: 20 }
+  { maxZoom:20 }
 ).addTo(map);
 
 /* Players */
 const markers = {};
 
-/* Location tracking */
+/* Location */
 navigator.geolocation.watchPosition(pos => {
-  set(ref(db, "players/"+playerId), {
+  set(ref(db,"players/"+playerId), {
     name,
     role,
-    lat: pos.coords.latitude,
-    lon: pos.coords.longitude,
-    last: Date.now()
+    lat:pos.coords.latitude,
+    lon:pos.coords.longitude,
+    last:Date.now()
   });
 });
 
@@ -138,15 +209,14 @@ onValue(ref(db,"players"), snap => {
   }
 });
 
-/* Seeker zone */
+/* Seeker Zone */
 let circle = null;
-const slider = document.getElementById("radiusSlider");
-const radiusValue = document.getElementById("radiusValue");
-const box = document.getElementById("radiusBox");
+const slider = radiusSlider;
+const value = radiusValue;
+const box = radiusBox;
 
 if (role === "seeker") box.style.display = "block";
 
-/* Sync zone */
 onValue(ref(db,"game/zone"), snap => {
   const z = snap.val();
   if (!z) return;
@@ -165,10 +235,9 @@ onValue(ref(db,"game/zone"), snap => {
   }
 
   slider.value = z.radius;
-  radiusValue.textContent = z.radius+" m";
+  value.textContent = z.radius+" m";
 });
 
-/* Seeker updates */
 if (role === "seeker") {
   map.on("editable:dragend", () => {
     const c = circle.getLatLng();
@@ -180,8 +249,9 @@ if (role === "seeker") {
   });
 
   slider.oninput = () => {
-    radiusValue.textContent = slider.value+" m";
+    value.textContent = slider.value+" m";
     circle.setRadius(slider.value);
+
     const c = circle.getLatLng();
     set(ref(db,"game/zone"), {
       lat:c.lat,
