@@ -70,11 +70,11 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
   import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
 
-  // ====== Firebase Config (Replace with yours) ======
+  // ====== Firebase Config (correct regional URL!) ======
   const firebaseConfig = {
     apiKey: "AIzaSyD259A37SrWNP8jaRP7h3NLKQMIAsr5jC4",
     authDomain: "hide-seek-demo-f6c65.firebaseapp.com",
-    databaseURL: "https://hide-seek-demo-f6c65-default-rtdb.firebaseio.com",
+    databaseURL: "https://hide-seek-demo-f6c65-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "hide-seek-demo-f6c65",
     storageBucket: "hide-seek-demo-f6c65.firebasestorage.app",
     messagingSenderId: "457844478016",
@@ -93,28 +93,34 @@
 
   const nameInput = document.getElementById("playerName");
   let playerName = localStorage.getItem("playerName") || '';
-  nameInput.value = playerName;
 
-  nameInput.addEventListener("change", () => {
-    playerName = nameInput.value.trim() || playerId;
+  // Prompt for name if empty
+  if (!playerName) {
+    playerName = prompt("Enter your player name:") || playerId;
     localStorage.setItem("playerName", playerName);
-    updatePlayerData();
-  });
+    nameInput.value = playerName;
+  } else {
+    nameInput.value = playerName;
+  }
 
-  // ====== Map Setup (Satellite + Terrain + Labels) ======
+  // ====== Map Setup (Google Satellite + Terrain + Labels) ======
   const map = L.map('map').setView([6.033, 80.216], 18);
 
-  const googleSatLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=y,h&x={x}&y={y}&z={z}', {
-    maxZoom: 20,
-    subdomains:['mt0','mt1','mt2','mt3'],
-    attribution: 'Map data © Google'
+  const googleSatLayer = L.tileLayer(
+    'https://{s}.google.com/vt/lyrs=y,h&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains:['mt0','mt1','mt2','mt3'],
+      attribution: 'Map data © Google'
   }).addTo(map);
 
   const playerMarkers = {};
 
   // ====== Update Player Location ======
-  function updatePlayerData() {
-    if (!navigator.geolocation) return;
+  function updatePlayerLocation() {
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported by your browser");
+      return;
+    }
 
     navigator.geolocation.watchPosition(pos => {
       const lat = pos.coords.latitude;
@@ -123,7 +129,7 @@
       set(ref(db, `players/${playerId}`), {
         lat,
         lon,
-        name: playerName || playerId,
+        name: playerName,
         lastUpdate: Date.now()
       });
 
@@ -132,7 +138,15 @@
     onDisconnect(ref(db, `players/${playerId}`)).remove();
   }
 
-  updatePlayerData();
+  // Start location updates
+  updatePlayerLocation();
+
+  // ====== Listen for name changes ======
+  nameInput.addEventListener("change", () => {
+    playerName = nameInput.value.trim() || playerId;
+    localStorage.setItem("playerName", playerName);
+    updatePlayerLocation();
+  });
 
   // ====== Show All Players ======
   onValue(ref(db, "players"), snapshot => {
@@ -142,10 +156,10 @@
       const { lat, lon, name } = players[id];
 
       if (!playerMarkers[id]) {
-        // Create a pulsing div icon
         const pulseIcon = L.divIcon({
           className: '',
-          html: `<div class="pulse"></div><div style="position:absolute;top:20px;left:-10px;color:black;font-weight:600;">${name}</div>`,
+          html: `<div class="pulse"></div>
+                 <div style="position:absolute;top:20px;left:-10px;color:black;font-weight:600;">${name}</div>`,
           iconSize: [18,18],
           iconAnchor: [9,9],
         });
@@ -154,7 +168,8 @@
         playerMarkers[id].setLatLng([lat, lon]);
         playerMarkers[id].setIcon(L.divIcon({
           className: '',
-          html: `<div class="pulse"></div><div style="position:absolute;top:20px;left:-10px;color:black;font-weight:600;">${name}</div>`,
+          html: `<div class="pulse"></div>
+                 <div style="position:absolute;top:20px;left:-10px;color:black;font-weight:600;">${name}</div>`,
           iconSize: [18,18],
           iconAnchor: [9,9],
         }));
