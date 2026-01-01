@@ -5,10 +5,7 @@
 <title>Hide & Seek – Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-<!-- Font -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
@@ -17,29 +14,25 @@ html, body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
 }
+#map { height: 100%; width: 100%; }
 
-#map {
-  height: 100%;
-  width: 100%;
-}
-
-/* iOS-style glass header */
+/* Glass header */
 #header {
   position: absolute;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255,255,255,0.35);
-  backdrop-filter: blur(14px);
-  padding: 10px 14px;
-  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  padding: 12px 14px;
+  border-radius: 20px;
   z-index: 1000;
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
-#header input {
+#header input, #header select {
   padding: 6px 10px;
   border-radius: 12px;
   border: none;
@@ -52,13 +45,13 @@ html, body {
   border-radius: 12px;
   border: none;
   font-weight: 600;
-  background: rgba(0,0,0,0.85);
+  background: black;
   color: white;
   cursor: pointer;
 }
 
-/* Pulsing marker */
-.pulse {
+/* Pulses */
+.pulse-seeker {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -66,16 +59,24 @@ html, body {
   animation: pulse 1.5s infinite;
 }
 
+.pulse-hider {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2d7cff;
+  animation: pulse 1.5s infinite;
+}
+
 @keyframes pulse {
-  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,59,59,0.6); }
-  70% { transform: scale(1); box-shadow: 0 0 0 14px rgba(255,59,59,0); }
-  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,59,59,0); }
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0,0,0,0.4); }
+  70% { transform: scale(1); box-shadow: 0 0 0 14px rgba(0,0,0,0); }
+  100% { transform: scale(0.9); }
 }
 
 .player-name {
   position: absolute;
   top: 22px;
-  left: -18px;
+  left: -22px;
   font-size: 12px;
   font-weight: 600;
   color: black;
@@ -86,22 +87,25 @@ html, body {
 
 <body>
 
-<!-- Header -->
+<!-- HEADER -->
 <div id="header">
-  <input type="text" id="playerName" placeholder="Your name">
-  <button id="saveName">Save</button>
+  <input id="playerName" placeholder="Name">
+  <select id="playerRole">
+    <option value="hider">Hider</option>
+    <option value="seeker">Seeker</option>
+  </select>
+  <button id="saveBtn">Save</button>
 </div>
 
 <div id="map"></div>
 
-<!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
 
-/* 🔥 Firebase config (Asia region – IMPORTANT) */
+/* Firebase */
 const firebaseConfig = {
   apiKey: "AIzaSyD259A37SrWNP8jaRP7h3NLKQMIAsr5jC4",
   authDomain: "hide-seek-demo-f6c65.firebaseapp.com",
@@ -115,105 +119,86 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* Player ID */
+/* Player identity */
 let playerId = localStorage.getItem("playerId");
 if (!playerId) {
   playerId = "player-" + Math.floor(Math.random() * 100000);
   localStorage.setItem("playerId", playerId);
 }
 
-/* Player Name */
-const nameInput = document.getElementById("playerName");
-const saveBtn = document.getElementById("saveName");
-
 let playerName = localStorage.getItem("playerName") || "";
+let playerRole = localStorage.getItem("playerRole") || "hider";
+
 if (!playerName) {
-  playerName = prompt("Enter your player name") || playerId;
+  playerName = prompt("Enter your name") || playerId;
   localStorage.setItem("playerName", playerName);
 }
+
+/* UI */
+const nameInput = document.getElementById("playerName");
+const roleSelect = document.getElementById("playerRole");
+const saveBtn = document.getElementById("saveBtn");
+
 nameInput.value = playerName;
+roleSelect.value = playerRole;
 
 /* Map */
 const map = L.map("map").setView([6.033, 80.216], 18);
 
-/* Esri Satellite */
 L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   { maxZoom: 20 }
 ).addTo(map);
 
-/* Stamen Labels */
 L.tileLayer(
   "https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}.png",
   { maxZoom: 20 }
 ).addTo(map);
 
-/* Location tracking */
-let watchId = null;
-
-function startTracking() {
-  if (!navigator.geolocation) {
-    alert("Geolocation not supported");
-    return;
-  }
-
-  if (watchId) navigator.geolocation.clearWatch(watchId);
-
-  watchId = navigator.geolocation.watchPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-
-    set(ref(db, "players/" + playerId), {
-      lat,
-      lon,
-      name: playerName,
-      lastUpdate: Date.now()
-    });
-
-  }, err => alert("Location error: " + err.message), {
-    enableHighAccuracy: true
-  });
-
-  onDisconnect(ref(db, "players/" + playerId)).remove();
-}
-
-startTracking();
-
-/* Save name */
-function saveName() {
+/* Save */
+function saveProfile() {
   playerName = nameInput.value.trim() || playerId;
+  playerRole = roleSelect.value;
+
   localStorage.setItem("playerName", playerName);
-  startTracking();
+  localStorage.setItem("playerRole", playerRole);
 }
+saveBtn.onclick = saveProfile;
 
-saveBtn.addEventListener("click", saveName);
-nameInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    saveName();
-    nameInput.blur();
-  }
-});
+/* Location tracking */
+navigator.geolocation.watchPosition(pos => {
+  set(ref(db, "players/" + playerId), {
+    name: playerName,
+    role: playerRole,
+    lat: pos.coords.latitude,
+    lon: pos.coords.longitude,
+    lastUpdate: Date.now()
+  });
+}, err => alert("GPS error"), { enableHighAccuracy: true });
 
-/* Show all players */
+onDisconnect(ref(db, "players/" + playerId)).remove();
+
+/* Render players */
 const markers = {};
 
 onValue(ref(db, "players"), snap => {
   const players = snap.val() || {};
 
   for (const id in players) {
-    const { lat, lon, name } = players[id];
+    const p = players[id];
+    const pulseClass = p.role === "seeker" ? "pulse-seeker" : "pulse-hider";
 
     const icon = L.divIcon({
       className: "",
-      html: `<div class="pulse"></div><div class="player-name">${name}</div>`,
+      html: `<div class="${pulseClass}"></div><div class="player-name">${p.name}</div>`,
       iconSize: [18,18],
       iconAnchor: [9,9]
     });
 
     if (!markers[id]) {
-      markers[id] = L.marker([lat, lon], { icon }).addTo(map);
+      markers[id] = L.marker([p.lat, p.lon], { icon }).addTo(map);
     } else {
-      markers[id].setLatLng([lat, lon]);
+      markers[id].setLatLng([p.lat, p.lon]);
       markers[id].setIcon(icon);
     }
   }
