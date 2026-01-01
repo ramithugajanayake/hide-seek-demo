@@ -40,7 +40,8 @@
       font-weight: 700;
     }
 
-    header button {
+    /* About Button */
+    header a button {
       background: rgba(255,255,255,0.2);
       border: none;
       color: white;
@@ -49,6 +50,13 @@
       cursor: pointer;
       font-weight: 600;
       backdrop-filter: blur(10px);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    header a button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      background: rgba(255,255,255,0.3);
     }
 
     /* Hero Section */
@@ -142,7 +150,9 @@
   <!-- Header -->
   <header>
     <h1>Hide & Seek World</h1>
-    <button>About</button>
+    <a href="about.html" style="text-decoration: none;">
+      <button>About</button>
+    </a>
   </header>
 
   <!-- Hero -->
