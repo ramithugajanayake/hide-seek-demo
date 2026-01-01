@@ -1,111 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Hide & Seek – Game</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hide & Seek — Game</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<style>
-html, body {
-  height: 100%;
-  margin: 0;
-  font-family: 'Poppins', sans-serif;
-}
-#map { height: 100%; width: 100%; }
+  <!-- Leaflet Editable -->
+  <script src="https://unpkg.com/leaflet-editable@1.2.0/src/Leaflet.Editable.js"></script>
 
-/* Glass header */
-#header {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255,255,255,0.35);
-  backdrop-filter: blur(16px);
-  padding: 12px 14px;
-  border-radius: 20px;
-  z-index: 1000;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
+  <style>
+    html, body { margin:0; padding:0; height:100%; }
+    #map { height:100%; width:100%; }
 
-#header input, #header select {
-  padding: 6px 10px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 600;
-  outline: none;
-}
+    .glass {
+      position:absolute;
+      top:12px;
+      left:50%;
+      transform:translateX(-50%);
+      background:rgba(255,255,255,0.35);
+      backdrop-filter:blur(18px);
+      padding:10px 16px;
+      border-radius:20px;
+      z-index:1000;
+      font-weight:600;
+    }
 
-#header button {
-  padding: 6px 14px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 600;
-  background: black;
-  color: white;
-  cursor: pointer;
-}
-
-/* Pulses */
-.pulse-seeker {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #ff3b3b;
-  animation: pulse 1.5s infinite;
-}
-
-.pulse-hider {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #2d7cff;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0,0,0,0.4); }
-  70% { transform: scale(1); box-shadow: 0 0 0 14px rgba(0,0,0,0); }
-  100% { transform: scale(0.9); }
-}
-
-.player-name {
-  position: absolute;
-  top: 22px;
-  left: -22px;
-  font-size: 12px;
-  font-weight: 600;
-  color: black;
-  white-space: nowrap;
-}
-</style>
+    #radiusBox {
+      position:absolute;
+      bottom:16px;
+      left:50%;
+      transform:translateX(-50%);
+      background:rgba(255,255,255,0.35);
+      backdrop-filter:blur(18px);
+      padding:12px 16px;
+      border-radius:20px;
+      z-index:1000;
+      display:none;
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
-<div id="header">
-  <input id="playerName" placeholder="Name">
-  <select id="playerRole">
-    <option value="hider">Hider</option>
-    <option value="seeker">Seeker</option>
-  </select>
-  <button id="saveBtn">Save</button>
+<div class="glass" id="topBar"></div>
+
+<div id="radiusBox">
+  <b>Seeker Radius</b><br>
+  <input type="range" id="radiusSlider" min="50" max="500" value="150">
+  <span id="radiusValue">150 m</span>
 </div>
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
-
 /* Firebase */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyD259A37SrWNP8jaRP7h3NLKQMIAsr5jC4",
   authDomain: "hide-seek-demo-f6c65.firebaseapp.com",
@@ -120,30 +73,25 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 /* Player identity */
-let playerId = localStorage.getItem("playerId");
-if (!playerId) {
-  playerId = "player-" + Math.floor(Math.random() * 100000);
-  localStorage.setItem("playerId", playerId);
-}
+let playerId = localStorage.getItem("playerId") || crypto.randomUUID();
+localStorage.setItem("playerId", playerId);
 
-let playerName = localStorage.getItem("playerName") || "";
-let playerRole = localStorage.getItem("playerRole") || "hider";
+let name = localStorage.getItem("playerName");
+let role = localStorage.getItem("playerRole");
 
-if (!playerName) {
-  playerName = prompt("Enter your name") || playerId;
-  localStorage.setItem("playerName", playerName);
+if (!name || !role) {
+  name = prompt("Enter your name");
+  role = prompt("Type: seeker or hider").toLowerCase();
+  localStorage.setItem("playerName", name);
+  localStorage.setItem("playerRole", role);
 }
 
 /* UI */
-const nameInput = document.getElementById("playerName");
-const roleSelect = document.getElementById("playerRole");
-const saveBtn = document.getElementById("saveBtn");
-
-nameInput.value = playerName;
-roleSelect.value = playerRole;
+document.getElementById("topBar").textContent =
+  `${name} — ${role.toUpperCase()}`;
 
 /* Map */
-const map = L.map("map").setView([6.033, 80.216], 18);
+const map = L.map("map", { editable:true }).setView([6.033,80.216], 18);
 
 L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -155,54 +103,93 @@ L.tileLayer(
   { maxZoom: 20 }
 ).addTo(map);
 
-/* Save */
-function saveProfile() {
-  playerName = nameInput.value.trim() || playerId;
-  playerRole = roleSelect.value;
-
-  localStorage.setItem("playerName", playerName);
-  localStorage.setItem("playerRole", playerRole);
-}
-saveBtn.onclick = saveProfile;
+/* Players */
+const markers = {};
 
 /* Location tracking */
 navigator.geolocation.watchPosition(pos => {
-  set(ref(db, "players/" + playerId), {
-    name: playerName,
-    role: playerRole,
+  set(ref(db, "players/"+playerId), {
+    name,
+    role,
     lat: pos.coords.latitude,
     lon: pos.coords.longitude,
-    lastUpdate: Date.now()
+    last: Date.now()
   });
-}, err => alert("GPS error"), { enableHighAccuracy: true });
-
-onDisconnect(ref(db, "players/" + playerId)).remove();
+});
 
 /* Render players */
-const markers = {};
-
-onValue(ref(db, "players"), snap => {
+onValue(ref(db,"players"), snap => {
   const players = snap.val() || {};
-
   for (const id in players) {
     const p = players[id];
-    const pulseClass = p.role === "seeker" ? "pulse-seeker" : "pulse-hider";
+    const color = p.role === "seeker" ? "red" : "blue";
 
     const icon = L.divIcon({
-      className: "",
-      html: `<div class="${pulseClass}"></div><div class="player-name">${p.name}</div>`,
-      iconSize: [18,18],
-      iconAnchor: [9,9]
+      html:`<div style="background:${color};width:14px;height:14px;border-radius:50%"></div>
+            <div style="font-size:12px;font-weight:600">${p.name}</div>`,
+      iconSize:[14,14]
     });
 
     if (!markers[id]) {
-      markers[id] = L.marker([p.lat, p.lon], { icon }).addTo(map);
+      markers[id] = L.marker([p.lat,p.lon],{icon}).addTo(map);
     } else {
-      markers[id].setLatLng([p.lat, p.lon]);
-      markers[id].setIcon(icon);
+      markers[id].setLatLng([p.lat,p.lon]);
     }
   }
 });
+
+/* Seeker zone */
+let circle = null;
+const slider = document.getElementById("radiusSlider");
+const radiusValue = document.getElementById("radiusValue");
+const box = document.getElementById("radiusBox");
+
+if (role === "seeker") box.style.display = "block";
+
+/* Sync zone */
+onValue(ref(db,"game/zone"), snap => {
+  const z = snap.val();
+  if (!z) return;
+
+  if (!circle) {
+    circle = L.circle([z.lat,z.lon], {
+      radius:z.radius,
+      color:"red",
+      fillOpacity:0.15
+    }).addTo(map);
+
+    if (role === "seeker") circle.enableEdit();
+  } else {
+    circle.setLatLng([z.lat,z.lon]);
+    circle.setRadius(z.radius);
+  }
+
+  slider.value = z.radius;
+  radiusValue.textContent = z.radius+" m";
+});
+
+/* Seeker updates */
+if (role === "seeker") {
+  map.on("editable:dragend", () => {
+    const c = circle.getLatLng();
+    set(ref(db,"game/zone"), {
+      lat:c.lat,
+      lon:c.lng,
+      radius:circle.getRadius()
+    });
+  });
+
+  slider.oninput = () => {
+    radiusValue.textContent = slider.value+" m";
+    circle.setRadius(slider.value);
+    const c = circle.getLatLng();
+    set(ref(db,"game/zone"), {
+      lat:c.lat,
+      lon:c.lng,
+      radius:Number(slider.value)
+    });
+  };
+}
 </script>
 
 </body>
