@@ -3,15 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
 <title>Hide & Seek – Game</title>
 
 <!-- Leaflet -->
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
-
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <!-- Leaflet Editable -->
@@ -29,75 +24,51 @@ html, body {
   background: #000;
 }
 
-#map {
-  height: 100%;
-  width: 100%;
-}
+#map { height: 100%; width: 100%; }
 
 /* ===== HEADER ===== */
 header {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 56px;
   backdrop-filter: blur(18px);
   background: rgba(255,255,255,0.75);
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  z-index: 1000;
-  gap: 8px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px; z-index: 1000;
 }
 
-header input,
-header select {
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  font-size: 14px;
+header input, header select {
+  padding: 6px 10px; border-radius: 10px;
+  border: 1px solid #ccc; font-size: 14px;
 }
 
 header button {
-  padding: 6px 12px;
-  border-radius: 10px;
-  border: none;
-  background: #007aff;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
+  padding: 6px 12px; border-radius: 10px;
+  border: none; background: #007aff;
+  color: #fff; font-weight: 600; cursor: pointer;
 }
 
 /* ===== SEEKER CONTROLS ===== */
 #seekerControls {
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed; bottom: 16px;
+  left: 50%; transform: translateX(-50%);
   background: rgba(255,255,255,0.9);
   padding: 12px 16px;
   border-radius: 16px;
   backdrop-filter: blur(14px);
-  z-index: 1000;
-  display: none;
+  z-index: 1000; display: none;
 }
 
 /* ===== MARKERS ===== */
 .player-marker {
-  width: 14px;
-  height: 14px;
+  width: 14px; height: 14px;
   border-radius: 50%;
   border: 3px solid white;
   box-shadow: 0 0 8px rgba(0,0,0,0.4);
 }
 
-.seeker-marker {
-  background-color: #ff3b30;
-}
-
-.hider-marker {
-  background-color: #007aff;
-}
+.seeker-marker { background-color: #ff3b30; }
+.hider-marker { background-color: #007aff; }
 
 /* 🔥 FIX FOR RECTANGLE BUG */
 .leaflet-div-icon {
@@ -112,7 +83,6 @@ header button {
 <header>
   <input id="nameInput" placeholder="Your name" />
   <button onclick="saveName()">Save</button>
-
   <select id="roleSelect" onchange="changeRole()">
     <option value="hider">Hider</option>
     <option value="seeker">Seeker</option>
@@ -122,25 +92,21 @@ header button {
 <div id="seekerControls">
   <label>
     Radius:
-    <input
-      type="range"
-      min="50"
-      max="500"
-      step="10"
-      id="radiusSlider"
-    />
+    <input type="range" min="50" max="500" step="10" id="radiusSlider"/>
+  </label>
+  <label style="margin-left:10px;">
+    Circle Color:
+    <input type="color" id="circleColor" value="#ff3b30"/>
   </label>
 </div>
 
 <div id="map"></div>
 
 <script>
-/* ===== FIREBASE CONFIG ===== */
+/* ===== FIREBASE ===== */
 const firebaseConfig = {
-  databaseURL:
-    "https://hide-seek-demo-f6c65-default-rtdb.asia-southeast1.firebasedatabase.app"
+  databaseURL: "https://hide-seek-demo-f6c65-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -150,7 +116,6 @@ localStorage.setItem("playerId", playerId);
 
 let playerName = localStorage.getItem("playerName") || "";
 let role = localStorage.getItem("playerRole") || "hider";
-
 document.getElementById("nameInput").value = playerName;
 document.getElementById("roleSelect").value = role;
 
@@ -158,15 +123,8 @@ document.getElementById("roleSelect").value = role;
 const map = L.map("map", { editable: true }).setView([0, 0], 18);
 
 /* Satellite + labels */
-L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 22 }
-).addTo(map);
-
-L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-  { maxZoom: 22 }
-).addTo(map);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 22 }).addTo(map);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", { maxZoom: 22 }).addTo(map);
 
 /* ===== MARKERS ===== */
 const markers = {};
@@ -206,14 +164,11 @@ db.ref("players").on("value", snap => {
   Object.keys(data).forEach(id => {
     const p = data[id];
     if (!markers[id]) {
-      markers[id] = L.marker([p.lat, p.lng], {
-        icon: getIcon(p.role)
-      }).addTo(map);
+      markers[id] = L.marker([p.lat, p.lng], { icon: getIcon(p.role) }).addTo(map);
     } else {
       markers[id].setLatLng([p.lat, p.lng]);
       markers[id].setIcon(getIcon(p.role));
     }
-
     markers[id].bindPopup(`<b>${p.name}</b><br>${p.role}`);
   });
 });
@@ -239,13 +194,25 @@ function changeRole() {
 }
 
 /* ===== SEEKER CIRCLE ===== */
+const colorInput = document.getElementById("circleColor");
+let seekerColor = localStorage.getItem("seekerColor") || "#ff3b30";
+colorInput.value = seekerColor;
+
+colorInput.addEventListener("input", () => {
+  seekerColor = colorInput.value;
+  localStorage.setItem("seekerColor", seekerColor);
+  if (seekerCircle) {
+    seekerCircle.setStyle({ color: seekerColor, fillColor: seekerColor });
+  }
+});
+
 function enableSeekerCircle() {
   if (seekerCircle) return;
 
   seekerCircle = L.circle(map.getCenter(), {
     radius: 150,
-    color: "#ff3b30",
-    fillColor: "#ff3b30",
+    color: seekerColor,
+    fillColor: seekerColor,
     fillOpacity: 0.15
   }).addTo(map);
 
