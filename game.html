@@ -1,90 +1,104 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Hide & Seek — Game</title>
+<meta charset="UTF-8">
+<title>Hide & Seek – Game</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Leaflet Editable -->
-  <script src="https://unpkg.com/leaflet-editable@1.2.0/src/Leaflet.Editable.js"></script>
+<!-- Leaflet Editable -->
+<script src="https://unpkg.com/leaflet-editable@1.2.0/src/Leaflet.Editable.js"></script>
 
-  <style>
-    html, body { margin:0; padding:0; height:100%; }
-    #map { height:100%; width:100%; }
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: black;
+}
 
-    .glass {
-      position:absolute;
-      top:12px;
-      left:50%;
-      transform:translateX(-50%);
-      background:rgba(255,255,255,0.35);
-      backdrop-filter:blur(18px);
-      padding:10px 16px;
-      border-radius:20px;
-      z-index:1000;
-      font-weight:700;
-      color:black;
-      font-family:"Bropella",sans-serif;
-    }
+#map {
+  height: 100%;
+  width: 100%;
+}
 
-    .settings {
-      position:absolute;
-      top:12px;
-      right:12px;
-      cursor:pointer;
-      background:rgba(255,255,255,0.35);
-      backdrop-filter:blur(18px);
-      padding:8px 12px;
-      border-radius:16px;
-      z-index:1000;
-      font-weight:600;
-    }
+/* ===== Player markers ===== */
+.player-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
 
-    #radiusBox {
-      position:absolute;
-      bottom:16px;
-      left:50%;
-      transform:translateX(-50%);
-      background:rgba(255,255,255,0.35);
-      backdrop-filter:blur(18px);
-      padding:12px 16px;
-      border-radius:20px;
-      z-index:1000;
-      display:none;
-    }
+.seeker-marker { background: #ff3b30; }
+.hider-marker { background: #007aff; }
 
-    #colorPicker button {
-      cursor:pointer;
-      outline:none;
-    }
+/* ===== UI ===== */
+.glass {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(18px);
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-weight: 700;
+  z-index: 1000;
+}
 
-    #settingsModal {
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.4);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:2000;
-    }
+.settings {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(18px);
+  padding: 8px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  z-index: 1000;
+}
 
-    #settingsModal > div {
-      background:rgba(255,255,255,0.4);
-      backdrop-filter:blur(20px);
-      padding:20px;
-      border-radius:20px;
-      min-width:260px;
-    }
+#radiusBox {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(18px);
+  padding: 12px 16px;
+  border-radius: 20px;
+  display: none;
+  z-index: 1000;
+}
 
-    input, select, button {
-      width:100%;
-      padding:6px;
-      margin-top:4px;
-      margin-bottom:10px;
-    }
-  </style>
+#settingsModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+#settingsModal > div {
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(20px);
+  padding: 20px;
+  border-radius: 20px;
+  width: 260px;
+}
+
+input, select, button {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 6px;
+}
+</style>
 </head>
 
 <body>
@@ -93,37 +107,33 @@
 <div class="settings" onclick="openSettings()">⚙️</div>
 
 <div id="radiusBox">
-  <b>Seeker Radius</b><br>
+  <b>Zone Radius</b><br>
   <input type="range" id="radiusSlider" min="50" max="500" value="150">
   <span id="radiusValue">150 m</span>
-  <br><b>Circle Color</b><br>
-  <div id="colorPicker">
-    <button style="background:red;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('red')"></button>
-    <button style="background:orange;width:30px;height:30px;border:none;border-radius:50%;margin:2px;" onclick="setCircleColor('orange')"></button>
-    <button style="background:yellow;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('yellow')"></button>
-    <button style="background:green;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('green')"></button>
-    <button style="background:blue;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('blue')"></button>
-    <button style="background:indigo;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('indigo')"></button>
-    <button style="background:violet;width:30px;height:30px;border:none;border-radius:50%;margin:2px);" onclick="setCircleColor('violet')"></button>
-  </div>
+  <br><br>
+  <b>Zone Color</b><br>
+  <button onclick="setZoneColor('red')">🔴</button>
+  <button onclick="setZoneColor('orange')">🟠</button>
+  <button onclick="setZoneColor('yellow')">🟡</button>
+  <button onclick="setZoneColor('green')">🟢</button>
+  <button onclick="setZoneColor('blue')">🔵</button>
+  <button onclick="setZoneColor('indigo')">🟣</button>
+  <button onclick="setZoneColor('violet')">🟪</button>
 </div>
 
 <div id="map"></div>
 
-<!-- Settings Modal -->
+<!-- Settings -->
 <div id="settingsModal">
   <div>
     <h3>Player Settings</h3>
-
     <label>Name</label>
     <input id="nameInput">
-
     <label>Role</label>
     <select id="roleInput">
-      <option value="seeker">Seeker</option>
       <option value="hider">Hider</option>
+      <option value="seeker">Seeker</option>
     </select>
-
     <button onclick="saveSettings()">Save</button>
     <button onclick="closeSettings()">Cancel</button>
   </div>
@@ -133,202 +143,167 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
 
-/* Firebase Config */
+/* ===== Firebase ===== */
 const firebaseConfig = {
-  apiKey: "AIzaSyD259A37SrWNP8jaRP7h3NLKQMIAsr5jC4",
-  authDomain: "hide-seek-demo-f6c65.firebaseapp.com",
-  databaseURL: "https://hide-seek-demo-f6c65-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "hide-seek-demo-f6c65",
-  storageBucket: "hide-seek-demo-f6c65.firebasestorage.app",
-  messagingSenderId: "457844478016",
-  appId: "1:457844478016:web:7e576a496bea1fe03d8fa5"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* Player Identity */
+/* ===== Player identity ===== */
 let playerId = localStorage.getItem("playerId") || crypto.randomUUID();
 localStorage.setItem("playerId", playerId);
 
 let name = localStorage.getItem("playerName") || "Player";
 let role = localStorage.getItem("playerRole") || "hider";
 
-const topBar = document.getElementById("topBar");
 topBar.textContent = `${name} — ${role.toUpperCase()}`;
 
-/* Settings Modal */
+/* ===== Settings ===== */
 window.openSettings = () => {
   nameInput.value = name;
   roleInput.value = role;
   settingsModal.style.display = "flex";
 };
+
 window.closeSettings = () => settingsModal.style.display = "none";
+
 window.saveSettings = () => {
-  name = nameInput.value.trim() || "Player";
-  role = roleInput.value;
-  localStorage.setItem("playerName", name);
-  localStorage.setItem("playerRole", role);
+  localStorage.setItem("playerName", nameInput.value || "Player");
+  localStorage.setItem("playerRole", roleInput.value);
   location.reload();
 };
 
-/* Map Setup */
-const map = L.map("map", { editable:true }).setView([6.033,80.216],18);
+/* ===== Map ===== */
+const map = L.map("map", { editable: true }).setView([6.033, 80.216], 18);
 
-// Satellite + labels
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom:20 }).addTo(map);
-L.tileLayer("https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}.png",{ maxZoom:20 }).addTo(map);
+L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 20 }
+).addTo(map);
 
-/* Custom Icons */
-const seekerIcon = L.icon({
-  iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/5f/Red_target_icon.png',
-  iconSize: [32,32],
-  iconAnchor: [16,16]
-});
+L.tileLayer(
+  "https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}.png",
+  { maxZoom: 20 }
+).addTo(map);
 
-const hiderIcon = L.icon({
-  iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/0c/Blue_user_icon.png',
-  iconSize: [32,32],
-  iconAnchor: [16,16]
-});
+/* ===== Marker factory ===== */
+function getMarkerIcon(role) {
+  return L.divIcon({
+    className: "",
+    html: `<div class="player-marker ${role}-marker"></div>`,
+    iconSize: [14,14],
+    iconAnchor: [7,7]
+  });
+}
 
-/* Players */
 const markers = {};
 
+/* ===== Location tracking ===== */
 navigator.geolocation.watchPosition(pos => {
-  set(ref(db,"players/"+playerId), {
+  set(ref(db, "players/" + playerId), {
     name,
     role,
-    lat:pos.coords.latitude,
-    lon:pos.coords.longitude,
-    last:Date.now()
+    lat: pos.coords.latitude,
+    lon: pos.coords.longitude,
+    last: Date.now()
   });
 });
 
-/* Render players with popups only */
-onValue(ref(db,"players"), snap => {
+/* ===== Render players ===== */
+onValue(ref(db, "players"), snap => {
   const players = snap.val() || {};
   for (const id in players) {
     const p = players[id];
-    let icon = p.role==="seeker"?seekerIcon:hiderIcon;
-
     if (!markers[id]) {
-      markers[id] = L.marker([p.lat,p.lon],{icon}).addTo(map);
-
-      // Clickable popup only
-      markers[id].bindPopup(`<b>${p.name}</b><br>${p.role}<br>Last: ${new Date(p.last).toLocaleTimeString()}`);
+      markers[id] = L.marker([p.lat, p.lon], {
+        icon: getMarkerIcon(p.role)
+      }).addTo(map)
+        .bindPopup(`<b>${p.name}</b><br>${p.role}`);
     } else {
-      markers[id].setLatLng([p.lat,p.lon]);
-      markers[id].getPopup().setContent(`<b>${p.name}</b><br>${p.role}<br>Last: ${new Date(p.last).toLocaleTimeString()}`);
+      markers[id].setLatLng([p.lat, p.lon]);
     }
   }
 });
 
-/* Seeker Zone */
+/* ===== Zone ===== */
 let circle = null;
-const slider = radiusSlider;
-const value = radiusValue;
-const box = radiusBox;
 
-if(role==="seeker") box.style.display = "block";
+if (role === "seeker") radiusBox.style.display = "block";
 
-if(role==="seeker") {
-  const zoneRef = ref(db,"game/zone");
-  onValue(zoneRef, snap=>{
-    if(!snap.exists()){
-      navigator.geolocation.getCurrentPosition(pos=>{
-        set(zoneRef,{
-          lat:pos.coords.latitude,
-          lon:pos.coords.longitude,
-          radius:150,
-          color:"red"
-        });
-      });
-    }
-  },{ onlyOnce:true });
-}
-
-/* Sync zone */
-onValue(ref(db,"game/zone"), snap=>{
+onValue(ref(db, "game/zone"), snap => {
   const z = snap.val();
-  if(!z) return;
+  if (!z) return;
 
-  if(!circle){
-    circle = L.circle([z.lat,z.lon],{
-      radius:z.radius,
-      color:z.color||"red",
-      fillOpacity:0.15
+  if (!circle) {
+    circle = L.circle([z.lat, z.lon], {
+      radius: z.radius,
+      color: z.color,
+      fillOpacity: 0.15
     }).addTo(map);
 
-    if(role==="seeker") circle.enableEdit();
+    if (role === "seeker") circle.enableEdit();
   } else {
-    circle.setLatLng([z.lat,z.lon]);
+    circle.setLatLng([z.lat, z.lon]);
     circle.setRadius(z.radius);
-    circle.setStyle({ color:z.color||"red" });
+    circle.setStyle({ color: z.color });
   }
 
-  slider.value = z.radius;
-  value.textContent = z.radius+" m";
+  radiusSlider.value = z.radius;
+  radiusValue.textContent = z.radius + " m";
 });
 
-/* Slider & Drag Updates */
-if(role==="seeker"){
-  map.on("editable:dragend", ()=>{
-    if(!circle) return;
-    const c = circle.getLatLng();
-    set(ref(db,"game/zone"),{
-      lat:c.lat,
-      lon:c.lng,
-      radius:circle.getRadius(),
-      color:circle.options.color
+/* ===== Seeker controls ===== */
+if (role === "seeker") {
+  navigator.geolocation.getCurrentPosition(pos => {
+    set(ref(db, "game/zone"), {
+      lat: pos.coords.latitude,
+      lon: pos.coords.longitude,
+      radius: 150,
+      color: "red"
     });
   });
 
-  slider.oninput = ()=>{
-    if(!circle) return;
-    value.textContent = slider.value+" m";
-    circle.setRadius(slider.value);
+  radiusSlider.oninput = () => {
+    if (!circle) return;
+    circle.setRadius(radiusSlider.value);
+    radiusValue.textContent = radiusSlider.value + " m";
     const c = circle.getLatLng();
-    set(ref(db,"game/zone"),{
-      lat:c.lat,
-      lon:c.lng,
-      radius:Number(slider.value),
-      color:circle.options.color
+    set(ref(db, "game/zone"), {
+      lat: c.lat,
+      lon: c.lng,
+      radius: Number(radiusSlider.value),
+      color: circle.options.color
     });
   };
+
+  map.on("editable:dragend", () => {
+    if (!circle) return;
+    const c = circle.getLatLng();
+    set(ref(db, "game/zone"), {
+      lat: c.lat,
+      lon: c.lng,
+      radius: circle.getRadius(),
+      color: circle.options.color
+    });
+  });
 }
 
-/* Color Picker Function */
-window.setCircleColor = (color)=>{
-  if(!circle) return;
+window.setZoneColor = color => {
+  if (!circle) return;
   circle.setStyle({ color });
   const c = circle.getLatLng();
-  set(ref(db,"game/zone"),{
-    lat:c.lat,
-    lon:c.lng,
-    radius:circle.getRadius(),
+  set(ref(db, "game/zone"), {
+    lat: c.lat,
+    lon: c.lng,
+    radius: circle.getRadius(),
     color
   });
 };
-
-/* Hider Detection */
-setInterval(()=>{
-  if(!circle) return;
-  const zoneCenter = circle.getLatLng();
-  const zoneRadius = circle.getRadius();
-
-  onValue(ref(db,"players"), snap=>{
-    const players = snap.val() || {};
-    for(const id in players){
-      const p = players[id];
-      if(p.role==="hider"){
-        const d = map.distance([p.lat,p.lon],[zoneCenter.lat,zoneCenter.lng]);
-        set(ref(db,`players/${id}/outsideZone`), d>zoneRadius);
-      }
-    }
-  });
-}, 3000);
-
 </script>
 
 </body>
